@@ -30,7 +30,7 @@ const resetPrerenderCloud = () => {
   // 1. prerenderToken (API token, you'll be rate limited without it)
   //    Get it after signing up at https://www.prerender.cloud/
   //    note: Lambda@Edge doesn't support env vars, so hardcoding is your only option.
-  // prerendercloud.set("prerenderToken", "mySecretToken")
+  prerendercloud.set("prerenderToken", "")
 
   // 2. protocol (optional, default is https)
   //    use this to force a certain protocol for requests from service.prerender.cloud to your origin
@@ -48,7 +48,7 @@ const resetPrerenderCloud = () => {
   //    Removes trailing slash from URLs to increase prerender.cloud server cache hit rate
   //    the only reason not to enable this is if you use "strict routing"
   //    that is, you treat /docs/ differently than /docs (trailing slash) which is rare
-  // prerendercloud.set("removeTrailingSlash", true);
+  prerendercloud.set("removeTrailingSlash", true);
 
   // 5. whitelistQueryParams (recommended)
   //    improves cache hit rate by dropping query params not in the whitelist
@@ -73,7 +73,7 @@ const resetPrerenderCloud = () => {
   // eg1:
   //   prerendercloud.set('metaOnly', req => req.url === "/long-page-insuitable-for-full-prerender" ? true : false);
   // eg2:
-  //   prerendercloud.set('metaOnly', () => true);
+  prerendercloud.set('metaOnly', () => true);
 
   // 9. disableServerCache
   //    Disable the cache on prerender.cloud (default is enabled with 5 minute duration).

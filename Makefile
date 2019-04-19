@@ -5,7 +5,7 @@ destroy:
 
 deploy:
 	node ./validate.js
-	./node_modules/.bin/serverless deploy
+	./node_modules/.bin/serverless deploy --aws-profile 0xproject
 	CLOUDFRONT_DISTRIBUTION_ID="${CLOUDFRONT_DISTRIBUTION_ID}" node deploy.js
 	CLOUDFRONT_DISTRIBUTION_ID="${CLOUDFRONT_DISTRIBUTION_ID}" node create-invalidation.js
 

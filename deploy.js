@@ -6,21 +6,23 @@ CLOUDFRONT_DISTRIBUTION_ID = process.env["CLOUDFRONT_DISTRIBUTION_ID"];
 
 const lambdaMappings = [
   {
-    FunctionName: "Lambda-Edge-Prerendercloud-dev-viewerRequest",
+    FunctionName: "Lambda-Edge-Prerendercloud-0x-dev-viewerRequest",
     EventType: "viewer-request"
   },
   {
-    FunctionName: "Lambda-Edge-Prerendercloud-dev-originRequest",
+    FunctionName: "Lambda-Edge-Prerendercloud-0x-dev-originRequest",
     EventType: "origin-request"
   },
   {
-    FunctionName: "Lambda-Edge-Prerendercloud-dev-originResponse",
+    FunctionName: "Lambda-Edge-Prerendercloud-0x-dev-originResponse",
     EventType: "origin-response"
   }
 ];
 
 const AWS = require("aws-sdk");
 AWS.config.region = "us-east-1";
+var credentials = new AWS.SharedIniFileCredentials({profile: '0xproject'});
+AWS.config.credentials = credentials;
 
 const lambda = new AWS.Lambda();
 const cloudfront = new AWS.CloudFront();
