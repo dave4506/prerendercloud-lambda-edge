@@ -1,215 +1,124 @@
-// http://docs.aws.amazon.com/lambda/latest/dg/lambda-edge.html
-// http://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-at-the-edge.html
-// http://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/cloudfront-limits.html#limits-lambda-at-edge
+const path = require('path');
+const http = require('http');
 
-"use strict";
-const ViewerRequestInterface = require("./lib/ViewerRequestInterface");
-const OriginRequestInterface = require("./lib/OriginRequestInterface");
+const PRERENDER_SOURCE_URL = 'https://dhu59qhs5qaqi.cloudfront.net'
+const RENDERTRON_URL = 'http://ec2-18-208-232-135.compute-1.amazonaws.com/render'
 
-const prerendercloud = require("prerendercloud");
+const BOT_USER_AGENTS = [
+  'Baiduspider',
+  'Bingbot',
+  'Embedly',
+  'facebookexternalhit',
+  'LinkedInBot',
+  'outbrain',
+  'pinterest',
+  'quora link preview',
+  'rogerbot',
+  'showyoubot',
+  'Slackbot',
+  'TelegramBot',
+  'Twitterbot',
+  'vkShare',
+  'W3C_Validator',
+  'WhatsApp',
+  'Googlebot',
+  'Facebot',
+  'facebot',
+  'Slurp',
+  'DuckDuckBot',
+  'YandexBot'
+];
 
-const origSet = prerendercloud.set;
-let cachedOptions = {};
-prerendercloud.set = function(optName, val) {
-  origSet.apply(undefined, arguments);
-  cachedOptions[optName] = val;
-};
+const getPrerender = (path,cb) => {
+  http.get(`${RENDERTRON_URL}/${encodeURIComponent(path)}`, (res) => {
+    let response;
+    let body = '';
+    
+    response = res;
 
-const resetPrerenderCloud = () => {
-  prerendercloud.resetOptions();
-  cachedOptions = {};
+    response.on('data', (chunk) => {
+      body += chunk;
+    });
 
-  // default prerender.cloud timeout is 10s
-  //   - so if it takes longer than 11s, either prerender.cloud is down or backed up
-  // max Lambda@Edge timeout is 30s
-  prerendercloud.set("retries", 1);
-  prerendercloud.set("timeout", 11000);
+    response.on('end', () => {
+      cb(true, body, res.headers);
+    });
+  }).on('error', (e) => cb(false, e));
+}
 
-  // * CONFIGURATION *
+const generateResponse = (body) => {
+  return {
+    status: '200',
+    statusDescription: "OK",
+    headers: {
+      'cache-control': [{
+          key: 'Cache-Control',
+          value: 'max-age=100'
+      }],
+      'content-type': [{
+          key: 'Content-Type',
+          value: 'text/html'
+      }],
+      'content-encoding': [{
+          key: 'Content-Encoding',
+          value: 'UTF-8'
+      }],
+    },
+    body
+  };
+}
 
-  // 1. prerenderToken (API token, you'll be rate limited without it)
-  //    Get it after signing up at https://www.prerender.cloud/
-  //    note: Lambda@Edge doesn't support env vars, so hardcoding is your only option.
-  prerendercloud.set("prerenderToken", "")
+const getHeader = (cloudFrontRequest, name) =>
+  cloudFrontRequest.headers[name] &&
+  cloudFrontRequest.headers[name][0] &&
+  cloudFrontRequest.headers[name][0].value;
 
-  // 2. protocol (optional, default is https)
-  //    use this to force a certain protocol for requests from service.prerender.cloud to your origin
-  //    example use case: if your origin is http only
-  // prerendercloud.set("protocol", "http");
-
-  // 3. host (optional, will infer from host header if not set here)
-  //    If having issues, try setting this to your custom domain (something like example.com)
-  //    or if you don't have one, then the CloudFront distribution URL (something like d1pxreml448ujs.cloudfront.net).
-  //    Note, setting this config option shouldn't be necessary
-  //    example value: example.com or d1pxreml448ujs.cloudfront.net (don't include the protocol)
-  // prerendercloud.set("host", "");
-
-  // 4. removeTrailingSlash (recommended)
-  //    Removes trailing slash from URLs to increase prerender.cloud server cache hit rate
-  //    the only reason not to enable this is if you use "strict routing"
-  //    that is, you treat /docs/ differently than /docs (trailing slash) which is rare
-  prerendercloud.set("removeTrailingSlash", true);
-
-  // 5. whitelistQueryParams (recommended)
-  //    improves cache hit rate by dropping query params not in the whitelist
-  //    must be a function that returns null or array
-  //    * default (null) preserves all query params
-  //    * empty array drops all query params
-  // prerendercloud.set("whitelistQueryParams", req => ["page"]);
-
-  // 6. botsOnly
-  //    generally not recommended due to potential google SEO cloaking penalties no one fully understands
-  // prerendercloud.set("botsOnly", true);
-
-  // 7. whitelistUserAgents
-  //    specify your own list of bots
-  //    useful when you only care about open graph previews (in which case, metaOnly also makes sense)
-  // prerendercloud.set('whitelistUserAgents', ['twitterbot', 'slackbot', 'facebookexternalhit']);
-
-  // 8. metaOnly
-  //    only prerender the <title> and <meta> tags in the <head> section. The returned HTML payload will otherwise be unmodified.
-  //    useful if you don't care about server-side rendering but want open-graph previews to work everywhere
-  //    must be a function that receives a req object, and returns a bool
-  // eg1:
-  //   prerendercloud.set('metaOnly', req => req.url === "/long-page-insuitable-for-full-prerender" ? true : false);
-  // eg2:
-  prerendercloud.set('metaOnly', () => true);
-
-  // 9. disableServerCache
-  //    Disable the cache on prerender.cloud (default is enabled with 5 minute duration).
-  //    It probably makes sense to disable the prerender.cloud server cache
-  //    since CloudFront is caching things for you.
-  //    Pros/Cons of disabling prerender.cloud server cache:
-  //      Pros
-  //        - when you invalidate CloudFront, the next page load will be guaranteed fresh
-  //      Cons
-  //        - when you invalid CloudFront each page load will require a new prerender call
-  //          (so if you regularly invalidate even if the content hasn't changed, you're slowing
-  //           things down unnecessarily)
-  // prerendercloud.set('disableServerCache', true);
-
-  // 10. blacklistPaths
-  //    the viewer-request function can't see what files exist on origin so you may need this
-  //    if you have HTML files that should not be pre-rendered (e.g. google/apple/fb verification files)
-  //    trailing * works as a wildcard
-  // prerendercloud.set('blacklistPaths', req => ['/facebook-domain-verification.html', '/signin/*', '/google*']);
-
-  // 11. removeScriptsTag (not recommended)
-  //    Removes all scripts/JS, useful if:
-  //      - trying to get under 1MB Lambda@Edge limit
-  //      - having problems with your JS app taking over from the pre-rendered content
-  //    Huge caveat: this also means your app will no longer be a "single-page app" since
-  //    all of the JavaScript will be gone
-  // prerendercloud.set("removeScriptTags", true);
-
-  // 12. disableAjaxPreload
-  //    "Ajax Preload" is a monkey-patch, included by default when metaOnly is false/null.
-  //     It prevents screen flicker/repaint/flashing, but increases initial page load size
-  //     (because it embeds the AJAX responses into your HTML).
-  //     you can disable this if:
-  //       * you have metaOnly set to true
-  //       * you don't make any AJAX/XHR requests
-  //       * you don't care about a brief flicker/flash
-  //       * or finally, the best option: you manage your own via prerender.cloud's __PRELOADED_STATE__ special global var
-  //     Read more:
-  //       - https://www.prerender.cloud/docs/server-client-transition
-  //       - https://github.com/sanfrancesco/prerendercloud-ajaxmonkeypatch
-  // prerendercloud.set("disableAjaxPreload", true);
-
-  // 13. see all configuration options here: https://github.com/sanfrancesco/prerendercloud-nodejs
-
-  // for tests
-  if (prerenderCloudOption) prerenderCloudOption(prerendercloud);
-};
+const ORIGNAL_USER_AGENT = 'prerender-lambda-edge-original-user-agent'
 
 module.exports.viewerRequest = (event, context, callback) => {
-  resetPrerenderCloud();
+  const { request } = event.Records[0].cf;
 
-  const cloudFrontRequest = event.Records[0].cf.request;
-  console.log("viewerRequest", JSON.stringify(cloudFrontRequest));
-
-  prerendercloud.set("beforeRender", (req, done) => {
-    // FYI: if this block is called, it means we shouldPrerender
-
-    // force the middleware to call res.writeHead and res.end immediately
-    // instead of the remote prerender. (this allows us to use most of the
-    // code from the prerendercloud lib and bail out at last moment)
-    done(null, "noop");
-  });
-
-  const { req, res, next } = ViewerRequestInterface.create(
-    cachedOptions,
-    cloudFrontRequest,
-    callback
-  );
-
-  prerendercloud(req, res, next);
+  request.headers[ORIGNAL_USER_AGENT] = [
+    {
+      key: ORIGNAL_USER_AGENT,
+      value: getHeader(request, "user-agent")
+    }
+  ];
+  
+  return callback(null, request);
 };
 
 module.exports.originRequest = (event, context, callback) => {
-  resetPrerenderCloud();
+  const { request } = event.Records[0].cf;
 
-  // temporary until timeout function of prerendercloud or got is fixed
-  // so it cancels request when timeout is reached
-  // https://github.com/sindresorhus/got/issues/344
-  // https://github.com/sindresorhus/got/pull/360
-  context.callbackWaitsForEmptyEventLoop = false;
+  const parsedPath = path.parse(request.uri);
 
-  const cloudFrontRequest = event.Records[0].cf.request;
-  console.log("originRequest", JSON.stringify(cloudFrontRequest));
+  const uapattern = new RegExp(BOT_USER_AGENTS.join('|'), 'i');
 
-  const { req, res, next, shouldPrerender } = OriginRequestInterface.create(
-    cachedOptions,
-    cloudFrontRequest,
-    callback
-  );
-
-  // we override the prerendercloud lib's default userAgent logic
-  // for deciding when to prerender because we've already computed it
-  // in the viewer-request, and encoded it into the URI, which is now in the `shouldPrerender` var
-  prerendercloud.set("shouldPrerender", () => shouldPrerender);
-
-  if (shouldPrerender) {
-    console.log("originRequest calling service.prerender.cloud:", {
-      host: req.headers.host,
-      url: req.url
-    });
+  console.log('request.uri', request.uri)
+  if (request.uri === '/index.html' || parsedPath.ext === '') {
+    console.log('user agent', getHeader(request, ORIGNAL_USER_AGENT), 'test', uapattern.test(getHeader(request, ORIGNAL_USER_AGENT)))
+    if(uapattern.test(getHeader(request, ORIGNAL_USER_AGENT))) {
+      const p = request.uri === '/index.html' ? '/':request.uri
+      getPrerender(`${PRERENDER_SOURCE_URL}${p}`,(status,data) => {
+        if(status) {
+          console.log('data', data);
+          callback(null, generateResponse(data));
+        } else {
+          console.log('error', data);
+          callback(null, request);
+        }
+      })
+    } else {
+      request.uri = parsedPath.ext === '' ? "/index.html" : request.uri;
+      callback(null, request);
+    }
   } else {
-    console.log("originRequest calling next", {
-      host: req.headers.host,
-      url: req.url
-    });
+    callback(null, request);
   }
-
-  prerendercloud(req, res, next);
 };
 
 module.exports.originResponse = (event, context, callback) => {
   const cloudFrontResponse = event.Records[0].cf.response;
-  // console.log("originResponse", JSON.stringify(cloudFrontResponse));
-
-  if (cloudFrontResponse.status === "404") {
-    cloudFrontResponse.body = `
-      <html>
-        <head>
-          <title>Not Found</title>
-        </head>
-        <body>404 - Not Found</body>
-      </html>
-    `;
-    cloudFrontResponse.headers["content-type"] = [
-      { key: "Content-Type", value: "text/html" }
-    ];
-  }
-
   callback(null, cloudFrontResponse);
 };
-
-// for tests
-var prerenderCloudOption;
-module.exports.setPrerenderCloudOption = cb => {
-  prerenderCloudOption = cb;
-};
-
-// for validation
-module.exports.resetPrerenderCloud = resetPrerenderCloud;

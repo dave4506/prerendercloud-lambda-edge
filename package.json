@@ -6,6 +6,7 @@
     "serverless": "1.38.0"
   },
   "dependencies": {
+    "path": "^0.12.7",
     "prerendercloud": "1.40.1"
   }
 }
