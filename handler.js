@@ -30,7 +30,9 @@ const BOT_USER_AGENTS = [
 ];
 
 const getPrerender = (path,cb) => {
-  http.get(`${RENDERTRON_URL}/${encodeURIComponent(path)}`, (res) => {
+  const url = `${RENDERTRON_URL}/${encodeURIComponent(path)}`;
+  console.log('rendertron service with url:',url)
+  http.get(url, (res) => {
     let response;
     let body = '';
     
