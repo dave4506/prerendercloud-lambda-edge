@@ -8,7 +8,6 @@ const BOT_USER_AGENTS = [
   'Baiduspider',
   'Bingbot',
   'Embedly',
-  'facebookexternalhit',
   'LinkedInBot',
   'outbrain',
   'pinterest',
@@ -22,8 +21,6 @@ const BOT_USER_AGENTS = [
   'W3C_Validator',
   'WhatsApp',
   'Googlebot',
-  'Facebot',
-  'facebot',
   'Slurp',
   'DuckDuckBot',
   'YandexBot'
