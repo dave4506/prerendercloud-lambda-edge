@@ -4,7 +4,7 @@ if (!process.env["CLOUDFRONT_DISTRIBUTION_ID"]) {
 
 CLOUDFRONT_DISTRIBUTION_ID = process.env["CLOUDFRONT_DISTRIBUTION_ID"];
 
-const STAGE = 'staging';
+const STAGE = 'prod';
 
 const lambdaMappings = [
   {

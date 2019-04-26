@@ -15,7 +15,7 @@ provider:
   role: LambdaEdgeRole
 
 # you can overwrite defaults here
-  stage: staging
+  stage: prod
 
 # you can define service wide environment variables here
 #  environment:

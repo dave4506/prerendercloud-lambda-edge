@@ -1,7 +1,7 @@
 const path = require('path');
 const http = require('http');
 
-const PRERENDER_SOURCE_URL = 'https://dhu59qhs5qaqi.cloudfront.net'
+const PRERENDER_SOURCE_URL = 'https://d2uvd02r4antif.cloudfront.net' // NOTE: url should not end with a '/'
 const RENDERTRON_URL = 'http://ec2-18-208-232-135.compute-1.amazonaws.com/render'
 
 const BOT_USER_AGENTS = [
