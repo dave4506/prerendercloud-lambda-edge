@@ -6,15 +6,15 @@ CLOUDFRONT_DISTRIBUTION_ID = process.env["CLOUDFRONT_DISTRIBUTION_ID"];
 
 const lambdaMappings = [
   {
-    FunctionName: "Lambda-Edge-Prerendercloud-0x-dev-viewerRequest",
+    FunctionName: "zeroex-rendertron-edge-dev2-viewerRequest",
     EventType: "viewer-request"
   },
   {
-    FunctionName: "Lambda-Edge-Prerendercloud-0x-dev-originRequest",
+    FunctionName: "zeroex-rendertron-edge-dev2-originRequest",
     EventType: "origin-request"
   },
   {
-    FunctionName: "Lambda-Edge-Prerendercloud-0x-dev-originResponse",
+    FunctionName: "zeroex-rendertron-edge-dev2-originResponse",
     EventType: "origin-response"
   }
 ];

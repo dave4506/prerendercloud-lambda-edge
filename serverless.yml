@@ -1,7 +1,7 @@
 
 # see limits on Lambda@Edge http://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/cloudfront-limits.html#limits-lambda-at-edge
 
-service: Lambda-Edge-Prerendercloud-0x
+service: zeroex-rendertron-edge
 
 # You can pin your service to only deploy with a specific Serverless version
 # Check out our docs for more details
@@ -15,13 +15,13 @@ provider:
   role: LambdaEdgeRole
 
 # you can overwrite defaults here
-#  stage: dev
+  stage: dev2
 
 # you can define service wide environment variables here
 #  environment:
 #    variable1: value1
 
-# you can add packaging information here
+# you can add packaging information swc
 #package:
 #  include:
 #    - include-me.js
@@ -64,7 +64,5 @@ resources:
               Statement:
                 - Effect: Allow
                   Action:
-                    - logs:CreateLogGroup
-                    - logs:CreateLogStream
-                    - logs:PutLogEvents
-                  Resource: "arn:aws:logs:*:*:*"
+                    - logs:*
+                  Resource: "*"
