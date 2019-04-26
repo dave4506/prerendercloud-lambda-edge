@@ -4,17 +4,19 @@ if (!process.env["CLOUDFRONT_DISTRIBUTION_ID"]) {
 
 CLOUDFRONT_DISTRIBUTION_ID = process.env["CLOUDFRONT_DISTRIBUTION_ID"];
 
+const STAGE = 'prod';
+
 const lambdaMappings = [
   {
-    FunctionName: "zeroex-rendertron-edge-dev2-viewerRequest",
+    FunctionName: `zeroex-rendertron-edge-${STAGE}-viewerRequest`,
     EventType: "viewer-request"
   },
   {
-    FunctionName: "zeroex-rendertron-edge-dev2-originRequest",
+    FunctionName: `zeroex-rendertron-edge-${STAGE}-originRequest`,
     EventType: "origin-request"
   },
   {
-    FunctionName: "zeroex-rendertron-edge-dev2-originResponse",
+    FunctionName: `zeroex-rendertron-edge-${STAGE}-originResponse`,
     EventType: "origin-response"
   }
 ];

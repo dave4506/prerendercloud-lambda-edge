@@ -1,7 +1,7 @@
 const path = require('path');
 const http = require('http');
 
-const PRERENDER_SOURCE_URL = 'https://dhu59qhs5qaqi.cloudfront.net'
+const PRERENDER_SOURCE_URL = 'https://d2uvd02r4antif.cloudfront.net' // NOTE: url should not end with a '/'
 const RENDERTRON_URL = 'http://ec2-18-208-232-135.compute-1.amazonaws.com/render'
 
 const BOT_USER_AGENTS = [
@@ -94,17 +94,23 @@ module.exports.originRequest = (event, context, callback) => {
 
   const uapattern = new RegExp(BOT_USER_AGENTS.join('|'), 'i');
 
-  console.log('request.uri', request.uri)
+  console.log('requesting resource from cloud front:', request.uri);
   if (request.uri === '/index.html' || parsedPath.ext === '') {
-    console.log('user agent', getHeader(request, ORIGNAL_USER_AGENT), 'test', uapattern.test(getHeader(request, ORIGNAL_USER_AGENT)))
+    console.log('user agent:', getHeader(request, ORIGNAL_USER_AGENT), 'test', uapattern.test(getHeader(request, ORIGNAL_USER_AGENT)))
     if(uapattern.test(getHeader(request, ORIGNAL_USER_AGENT))) {
       const p = request.uri === '/index.html' ? '/':request.uri
       getPrerender(`${PRERENDER_SOURCE_URL}${p}`,(status,data) => {
         if(status) {
-          console.log('data', data);
+          console.log('prerendered output:', data);
+          /*
+            cloudfront callbacks can take a response object 
+            and 'short-circuit' the request to cloudfront into
+            sending the prerendered files instead of retreiving files
+            s3 or cloudfront caches
+          */
           callback(null, generateResponse(data));
         } else {
-          console.log('error', data);
+          console.log('error:', data);
           callback(null, request);
         }
       })
