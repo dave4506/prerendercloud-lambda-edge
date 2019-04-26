@@ -2,9 +2,13 @@ if (!process.env["CLOUDFRONT_DISTRIBUTION_ID"]) {
   throw new Error("CLOUDFRONT_DISTRIBUTION_ID env var must be set");
 }
 
+if (!process.env["STAGE"]) {
+  throw new Error("STAGE env var must be set");
+}
+
 CLOUDFRONT_DISTRIBUTION_ID = process.env["CLOUDFRONT_DISTRIBUTION_ID"];
 
-const STAGE = 'prod';
+const STAGE = process.env["STAGE"];
 
 const lambdaMappings = [
   {
